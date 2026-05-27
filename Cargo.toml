@@ -1,0 +1,8 @@
+[package]
+name = "suricatax80-plugin-utils"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75.0"
+description = "Minimal Suricata 8.0 plugin ABI bindings and C compatibility declarations"
+license = "GPL-2.0-only"
+readme = "README.md"
