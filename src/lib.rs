@@ -24,6 +24,20 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+mod detect;
+mod log;
+mod plugin;
+mod storage;
+
+pub use detect::{
+    register_packet_keyword, sigmatch_ctx_free, signature_append_sigmatch, signature_is_negated,
+    signature_sigmatches, PacketKeyword, SigMatchIter,
+};
+pub use log::log_level_enabled;
+#[doc(hidden)]
+pub use log::__log_module;
+pub use storage::{FlowStorage, ThreadStorage};
+
 use core::ffi::c_void;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_uint};
@@ -34,6 +48,10 @@ pub const SC_PACKAGE_VERSION: &[u8] = b"8.0.x\0";
 pub const SC_LOG_ERROR: c_int = 1;
 pub const SC_LOG_WARNING: c_int = 2;
 pub const SC_LOG_NOTICE: c_int = 3;
+pub const SC_LOG_INFO: c_int = 4;
+pub const SC_LOG_PERF: c_int = 5;
+pub const SC_LOG_CONFIG: c_int = 6;
+pub const SC_LOG_DEBUG: c_int = 7;
 
 pub const IPV6_HEADER_LEN: u16 = 40;
 pub const DETECT_SM_LIST_MATCH: c_int = 0;
@@ -418,6 +436,8 @@ extern "C" {
         fmt: *const c_char,
         ...
     );
+
+    pub fn SCLogGetLogLevel() -> c_int;
 
     pub fn SCConfGet(name: *const c_char, vptr: *mut *const c_char) -> c_int;
 
