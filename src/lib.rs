@@ -25,13 +25,14 @@
 #![allow(non_snake_case)]
 
 use core::ffi::c_void;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_uint};
 
 pub const SC_API_VERSION: u64 = 0x0800;
 pub const SC_PACKAGE_VERSION: &[u8] = b"8.0.x\0";
 
 pub const SC_LOG_ERROR: c_int = 1;
+pub const SC_LOG_WARNING: c_int = 2;
 pub const SC_LOG_NOTICE: c_int = 3;
 
 pub const IPV6_HEADER_LEN: u16 = 40;
@@ -44,6 +45,9 @@ pub const PACKET_L3_IPV4: c_int = 1;
 pub const PACKET_L3_IPV6: c_int = 2;
 
 pub const IPPROTO_UDP: u8 = 17;
+
+pub const FLOW_PKT_TOSERVER: u8 = 0x01;
+pub const FLOW_PKT_TOCLIENT: u8 = 0x02;
 
 #[repr(C)]
 pub struct SCPlugin {
@@ -107,7 +111,9 @@ pub struct PacketL3 {
 pub struct Packet {
     pub _pad_proto: [u8; 44],
     pub proto: u8,
-    pub _pad_flow: [u8; 19],
+    pub _pad_flowflags: [u8; 8],
+    pub flowflags: u8,
+    pub _pad_flow: [u8; 10],
     pub flow: *mut Flow,
     pub _pad_ts: [u8; 8],
     pub ts: u64,
@@ -141,6 +147,16 @@ impl Packet {
             }
             _ => None,
         }
+    }
+
+    /// Whether the packet is flowing from the client to the server.
+    pub fn is_toserver(&self) -> bool {
+        self.flowflags & FLOW_PKT_TOSERVER != 0
+    }
+
+    /// Whether the packet is flowing from the server to the client.
+    pub fn is_toclient(&self) -> bool {
+        self.flowflags & FLOW_PKT_TOCLIENT != 0
     }
 
     pub fn timestamp_millis(&self) -> u64 {
@@ -293,7 +309,8 @@ pub fn log_message(
         let module = safe_cstring(module);
         let fmt = b"%s\0";
 
-        if level == SC_LOG_ERROR {
+        // Like SCLogError() and SCLogWarning(), which use SCLogErr().
+        if level == SC_LOG_ERROR || level == SC_LOG_WARNING {
             SCLogErr(
                 level,
                 file.as_ptr(),
@@ -320,6 +337,20 @@ pub fn log_message(
 pub fn fatal_error(module: &str, message: String) -> ! {
     log_message(SC_LOG_ERROR, module, file!(), line!(), "fatal_error", message);
     std::process::exit(1);
+}
+
+/// Get a configuration value by its full name, such as "ndpi.license".
+///
+/// Returns `None` if the value is not set.
+pub fn conf_get(name: &str) -> Option<String> {
+    let name = CString::new(name).ok()?;
+    let mut value: *const c_char = std::ptr::null();
+    unsafe {
+        if SCConfGet(name.as_ptr(), &mut value) != 1 || value.is_null() {
+            return None;
+        }
+        Some(CStr::from_ptr(value).to_string_lossy().into_owned())
+    }
 }
 
 fn safe_cstring(val: &str) -> CString {
@@ -369,6 +400,8 @@ extern "C" {
         fmt: *const c_char,
         ...
     );
+
+    pub fn SCConfGet(name: *const c_char, vptr: *mut *const c_char) -> c_int;
 
     pub fn FlowStorageRegister(
         name: *const c_char,
