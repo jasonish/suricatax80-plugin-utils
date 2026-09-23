@@ -124,6 +124,16 @@ pub struct Packet {
 }
 
 impl Packet {
+    /// The IP packet (IPv4 or IPv6 header and payload) as a pointer and the
+    /// length declared in its IP header.
+    ///
+    /// Returns `None` if the packet has no IPv4 or IPv6 layer.
+    ///
+    /// # Safety
+    ///
+    /// `self` must be a packet decoded by Suricata, so that its L3 header
+    /// pointer is valid. The returned length is taken from the IP header and
+    /// is not checked against the captured packet length.
     pub unsafe fn ip_packet(&self) -> Option<(*const u8, u16)> {
         match self.l3.type_ {
             PACKET_L3_IPV4 => {
@@ -290,6 +300,14 @@ pub struct SCJsonBuilder {
     _private: [u8; 0],
 }
 
+/// Add pre-formatted JSON object members, such as `"key":value`, to `jb`.
+///
+/// Returns false if the members were not added.
+///
+/// # Safety
+///
+/// `jb` must be a valid JSON builder with an open object, and `formatted`
+/// must point to a nul-terminated string.
 pub unsafe fn scjb_set_formatted(jb: *mut SCJsonBuilder, formatted: *const c_char) -> bool {
     SCJbSetFormatted(jb, formatted)
 }
