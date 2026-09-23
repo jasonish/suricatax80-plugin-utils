@@ -31,8 +31,8 @@ use std::os::raw::{c_char, c_int, c_uint};
 pub const SC_API_VERSION: u64 = 0x0800;
 pub const SC_PACKAGE_VERSION: &[u8] = b"8.0.x\0";
 
-pub const SC_LOG_ERROR: c_int = 2;
-pub const SC_LOG_NOTICE: c_int = 5;
+pub const SC_LOG_ERROR: c_int = 1;
+pub const SC_LOG_NOTICE: c_int = 3;
 
 pub const IPV6_HEADER_LEN: u16 = 40;
 pub const DETECT_SM_LIST_MATCH: c_int = 0;
